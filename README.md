@@ -7,8 +7,7 @@
   
  ## Rinkeby Contracts
   - Token https://rinkeby.etherscan.io/address/0x060dea069f4a0cf3f359152ec02f048ce9930686
-  - Treasurer: https://rinkeby.etherscan.io/address/0xF43318b1793DdC37a1265A6e42f677c1AEe598a6#contracts
-  - Treasurer v2: https://rinkeby.etherscan.io/address/0xF43318b1793DdC37a1265A6e42f677c1AEe598a6#contracts
+  - Treasurer: https://rinkeby.etherscan.io/address/0x1938fE71F3c89dA1C5b9C6a1E02D5466F986f265#code
   
 ## License
 

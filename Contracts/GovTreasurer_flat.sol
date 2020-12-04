@@ -967,7 +967,7 @@ contract GovTreasurer is Ownable {
         pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount.sub(user.taxedAmount));
         pool.lpToken.safeTransferFrom(address(msg.sender), address(devaddr), _amount.div(pool.taxRate));
 
-        emit Deposit(msg.sender, _pid, _amount);
+        emit Deposit(msg.sender, _pid, _amount.sub(user.taxedAmount));
     }
 
     // WITHDRAW | FARMING ASSETS (TOKENS) | RE-ENTRANCY DEFENSE

@@ -960,6 +960,7 @@ contract GovTreasurer is Ownable {
         uint256 pending = user.amount.mul(pool.accGDAOPerShare).div(1e12).sub(user.rewardDebt);
         
         user.amount = user.amount.add(_amount);
+        user.taxedAmount = user.amount.div(pool.taxRate); // pool.taxRate x amount = 'taxedAmount'
         user.rewardDebt = user.amount.mul(pool.accGDAOPerShare).div(1e12);
 
         safeGDAOTransfer(msg.sender, pending);

@@ -818,7 +818,7 @@ contract GovTreasurer is Ownable {
 
     PoolInfo[] public poolInfo;
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
-    uint256 public totalAllocPoint = 12;
+    uint256 public totalAllocPoint = 0;
     uint256 public startBlock;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);

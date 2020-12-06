@@ -787,7 +787,6 @@ contract GovTreasurer is Ownable {
     // INFO | USER VARIABLES
     struct UserInfo {
         uint256 amount;     // How many tokens the user has provided.
-        uint256 taxedAmount; // How many tokens the user is taxed (2% tax).
         uint256 rewardDebt; // Reward debt. See explanation below.
         //
         // The pending GDAO entitled to a user is referred to as the pending reward:
@@ -818,7 +817,7 @@ contract GovTreasurer is Ownable {
 
     PoolInfo[] public poolInfo;
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
-    uint256 public totalAllocPoint = 12;
+    uint256 public totalAllocPoint = 0;
     uint256 public startBlock;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -944,12 +943,11 @@ contract GovTreasurer is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         
         user.amount = 0;
-        user.taxedAmount = 0;
         user.rewardDebt = 0;
         
-        pool.lpToken.safeTransfer(address(msg.sender), user.amount.sub(user.taxedAmount));
+        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
 
-        emit EmergencyWithdraw(msg.sender, _pid, user.amount.sub(user.taxedAmount));        
+        emit EmergencyWithdraw(msg.sender, _pid, user.amount);        
     }
 
     // DEPOSIT | FARMING ASSETS (TOKENS) | RE-ENTRANCY DEFENSE
@@ -957,17 +955,23 @@ contract GovTreasurer is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accGDAOPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 taxedAmount = _amount.div(pool.taxRate);
+
+        if (user.amount > 0) { // if there are already some amount deposited
+            uint256 pending = user.amount.mul(pool.accGDAOPerShare).div(1e12).sub(user.rewardDebt);
+            if(pending > 0) { // sends pending rewards, if applicable
+                safeGDAOTransfer(msg.sender, pending);
+            }
+        }
         
-        user.amount = user.amount.add(_amount);
-        user.taxedAmount = user.amount.div(pool.taxRate); // pool.taxRate x amount = 'taxedAmount'
+        if(_amount > 0) { // if adding more
+            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount.sub(taxedAmount));
+            pool.lpToken.safeTransferFrom(address(msg.sender), address(devaddr), taxedAmount);
+            user.amount = user.amount.add(_amount.sub(taxedAmount)); // update user.amount = non-taxed amount
+        }
+        
         user.rewardDebt = user.amount.mul(pool.accGDAOPerShare).div(1e12);
-
-        safeGDAOTransfer(msg.sender, pending);
-        pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount.sub(user.taxedAmount));
-        pool.lpToken.safeTransferFrom(address(msg.sender), address(devaddr), _amount.div(pool.taxRate));
-
-        emit Deposit(msg.sender, _pid, _amount.sub(user.taxedAmount));
+        emit Deposit(msg.sender, _pid, _amount.sub(taxedAmount));
     }
 
     // WITHDRAW | FARMING ASSETS (TOKENS) | RE-ENTRANCY DEFENSE
@@ -976,16 +980,19 @@ contract GovTreasurer is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accGDAOPerShare).div(1e12).sub(user.taxedAmount).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accGDAOPerShare).div(1e12).sub(user.rewardDebt);
 
-        user.amount = user.amount.sub(_amount);
-        user.taxedAmount = user.amount.div(pool.taxRate); // pool.taxRate x amount = 'taxedAmount'
+        if(pending > 0) { // send pending GDAO rewards
+            safeGDAOTransfer(msg.sender, pending);
+        }
+        
+        if(_amount > 0) {
+            user.amount = user.amount.sub(_amount);
+            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+        }
+        
         user.rewardDebt = user.amount.mul(pool.accGDAOPerShare).div(1e12);
-
-        safeGDAOTransfer(msg.sender, pending);
-        pool.lpToken.safeTransfer(address(msg.sender), _amount.sub(user.taxedAmount));
-
-        emit Withdraw(msg.sender, _pid, _amount.sub(user.taxedAmount));
+        emit Withdraw(msg.sender, _pid, _amount);
     }
 
     // SAFE TRANSFER FUNCTION | ACCOUNTS FOR ROUNDING ERRORS | ENSURES SUFFICIENT GDAO IN POOLS.

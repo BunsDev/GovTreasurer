@@ -1,5 +1,5 @@
 /**
- *Submitted for verification at Etherscan.io on 2020-12-04
+ *Submitted for verification at Etherscan.io on 2020-12-17
 */
 
 // SPDX-License-Identifier: SPDX-License-Identifier
@@ -262,7 +262,7 @@ library Address {
      * ====
      */
     function isContract(address account) internal view returns (bool) {
-        // This method relies in extcodesize, which returns 0 for contracts in
+        // This method relies on extcodesize, which returns 0 for contracts in
         // construction, since the code is only stored at the end of the
         // constructor execution.
 
@@ -325,7 +325,7 @@ library Address {
      * _Available since v3.1._
      */
     function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
-        return _functionCallWithValue(target, data, 0, errorMessage);
+        return functionCallWithValue(target, data, 0, errorMessage);
     }
 
     /**
@@ -351,14 +351,38 @@ library Address {
      */
     function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
         require(address(this).balance >= value, "Address: insufficient balance for call");
-        return _functionCallWithValue(target, data, value, errorMessage);
-    }
-
-    function _functionCallWithValue(address target, bytes memory data, uint256 weiValue, string memory errorMessage) private returns (bytes memory) {
         require(isContract(target), "Address: call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.call{ value: weiValue }(data);
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
+        return functionStaticCall(target, data, "Address: low-level static call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data, string memory errorMessage) internal view returns (bytes memory) {
+        require(isContract(target), "Address: static call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.staticcall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
         } else {
@@ -469,8 +493,8 @@ library SafeERC20 {
  * }
  * ```
  *
- * As of v3.0.0, only sets of type `address` (`AddressSet`) and `uint256`
- * (`UintSet`) are supported.
+ * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
+ * and `uint256` (`UintSet`) are supported.
  */
 library EnumerableSet {
     // To implement this library for multiple types with as little code
@@ -576,6 +600,60 @@ library EnumerableSet {
     function _at(Set storage set, uint256 index) private view returns (bytes32) {
         require(set._values.length > index, "EnumerableSet: index out of bounds");
         return set._values[index];
+    }
+
+    // Bytes32Set
+
+    struct Bytes32Set {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _add(set._inner, value);
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _remove(set._inner, value);
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
+        return _contains(set._inner, value);
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(Bytes32Set storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+   /**
+    * @dev Returns the value stored at position `index` in the set. O(1).
+    *
+    * Note that there are no guarantees on the ordering of values inside the
+    * array, and it may change when more values are added or removed.
+    *
+    * Requirements:
+    *
+    * - `index` must be strictly less than {length}.
+    */
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+        return _at(set._inner, index);
     }
 
     // AddressSet
@@ -723,7 +801,7 @@ abstract contract Context {
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract Ownable is Context {
+abstract contract Ownable is Context {
     address private _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -775,7 +853,53 @@ contract Ownable is Context {
     }
 }
 
+/**
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMM,;,.;,',;.,;;MMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd;'.',dk0KKKK0kdc'..,dXMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd,.';oOXWMMMMMMWXOo;'.,dXMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMNd,'l0WMMM;;;;;MMMMW0','NMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMWX0x,'lXMMMN;';,,,...,,',;,,MMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMNoM'.;OMMMNd,.,NMMDKdNMMW';,,dWMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMXMC..;OMMMXl.',MMDSWlXMMM;.'oNMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMWOdc',xWMMWOc,.,.',;0WMMN''cdOWMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMWKl';kWMMMN0kxxk0NMMMNx;'cKWWMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd;.,o0NMMMMMMMMMMN0l,.,oXMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd;'.',dk0KKKK0kdc'..,dXMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMM,;,.;,',;.,;;MMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMM,;,.;,',;.,;;MMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd;'.',cdk0KKKK0kdc,'..,dXMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd;.,o0NMMMMMMMMMMN0l,.,oXMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMWKl';kWMMM........NMMMNx;'cKWWMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMWOdc',xWMM............WMMN''cdOWMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMM..;OMMM............XMMM;.'oNMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMWOdc',xWMM............WMMN''cdOWMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMWOdc',xWMMW...........WMMN''cdOWMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMWKl';kWMMM........NMMMNx;'cKWWMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd;.,o0NMMMMMMMMMMN0l,.,oXMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMXd;'.',cdk0KKKK0kdc,'..,dXMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMM,;,.;,',;.,;;MMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMM::::::MMMMMMMMMMMMMMMMMMM::::::MMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMM::MMM::MMMMMMMMMMMMMMMMM::MMM::MMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMM::MMM::MMMMMMMMMMMMMMM::MMM::MMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMM::MMM::MMMMMMMMMMMMM::MMM::MMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMM::MMM::MMMMMMMMMMM::MMM::MMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMM::MMM::MMMMMMMMM::MMM::MMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMM::MMM::MMMMMMM::MMM::MMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMM::MMM::MMMMM::MMM::MMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMM::MMM::MMM::MMM::MMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMM::MMM::M::MMM::MMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMM::MMM:::MMM::MMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMM::MMMMMM::MMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMM::MMMM::MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMNMMM::MM::MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+*/
 // 
+//
 // GovTreasurer is the treasurer of GDAO. She may allocate GDAO and she is a fair lady <3
 // Note that it's ownable and the owner wields tremendous power. The ownership
 // will be transferred to a governance smart contract once GDAO is sufficiently
@@ -783,6 +907,12 @@ contract Ownable is Context {
 contract GovTreasurer is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    address devaddr;
+    address public treasury;
+    IERC20 public gdao;
+    uint256 public bonusEndBlock;
+    uint256 public GDAOPerBlock;
+
 
     // INFO | USER VARIABLES
     struct UserInfo {
@@ -802,18 +932,12 @@ contract GovTreasurer is Ownable {
 
     // INFO | POOL VARIABLES
     struct PoolInfo {
-        IERC20 lpToken;           // Address of LP token contract.
+        IERC20 token;           // Address of token contract.
         uint256 allocPoint;       // How many allocation points assigned to this pool. GDAOs to distribute per block.
         uint256 taxRate;          // Rate at which the LP token is taxed.
         uint256 lastRewardBlock;  // Last block number that GDAOs distribution occurs.
         uint256 accGDAOPerShare; // Accumulated GDAOs per share, times 1e12. See below.
     }
-
-    address public devaddr;
-    IERC20 public rewardToken;
-    uint256 public bonusEndBlock;
-    uint256 public GDAOPerBlock;
-    uint256 public constant BONUS_MULTIPLIER = 1;
 
     PoolInfo[] public poolInfo;
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
@@ -824,18 +948,13 @@ contract GovTreasurer is Ownable {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-    constructor(
-        address _rewardToken,
-        address _devaddr,
-        uint256 _GDAOPerBlock,
-        uint256 _startBlock,
-        uint256 _bonusEndBlock
-    )   public {
-        rewardToken = IERC20(_rewardToken); // GDAO Reward
-        devaddr = _devaddr; // Multisig Treasury Account
-        GDAOPerBlock = _GDAOPerBlock; // Rewards Rate per Block
-        bonusEndBlock = _bonusEndBlock;
+    constructor(IERC20 _gdao, address _treasury, uint256 _GDAOPerBlock, uint256 _startBlock, uint256 _bonusEndBlock) public {
+        gdao = _gdao;
+        treasury = _treasury;
+        devaddr = msg.sender;
+        GDAOPerBlock = _GDAOPerBlock;
         startBlock = _startBlock;
+        bonusEndBlock = _bonusEndBlock;
     }
 
     function poolLength() external view returns (uint256) {
@@ -844,15 +963,15 @@ contract GovTreasurer is Ownable {
 
 
     // VALIDATION | ELIMINATES POOL DUPLICATION RISK
-    function checkPoolDuplicate(IERC20 _lpToken) public view {
+    function checkPoolDuplicate(IERC20 _token) public view {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
-            require(poolInfo[pid].lpToken != _lpToken, "add: existing pool?");
+            require(poolInfo[pid].token != _token, "add: existing pool?");
         }
     }
 
     // ADD | NEW TOKEN POOL
-    function add(uint256 _allocPoint, IERC20 _lpToken, uint256 _taxRate, bool _withUpdate) public 
+    function add(uint256 _allocPoint, IERC20 _token, uint256 _taxRate, bool _withUpdate) public 
         onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -860,7 +979,7 @@ contract GovTreasurer is Ownable {
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(PoolInfo({
-            lpToken: _lpToken,
+            token: _token,
             allocPoint: _allocPoint,
             taxRate: _taxRate,
             lastRewardBlock: lastRewardBlock,
@@ -881,11 +1000,11 @@ contract GovTreasurer is Ownable {
     function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         _from = _from >= startBlock ? _from : startBlock;
         if (_to <= bonusEndBlock) {
-            return _to.sub(_from).mul(BONUS_MULTIPLIER);
+            return _to.sub(_from);
         } else if (_from >= bonusEndBlock) {
             return _to.sub(_from);
         } else {
-            return bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(
+            return bonusEndBlock.sub(_from).add(
                 _to.sub(bonusEndBlock)
             );
         }
@@ -896,7 +1015,7 @@ contract GovTreasurer is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accGDAOPerShare = pool.accGDAOPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.token.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 GDAOReward = multiplier.mul(GDAOPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
@@ -919,7 +1038,7 @@ contract GovTreasurer is Ownable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.token.balanceOf(address(this));
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
@@ -937,7 +1056,7 @@ contract GovTreasurer is Ownable {
         _;
     }
 
-    // WITHDRAW | FARMING ASSETS (TOKENS) WITH NO REWARDS | EMERGENCY ONLY | RE-ENTRANCY DEFENSE
+    // WITHDRAW | ASSETS (TOKENS) WITH NO REWARDS | EMERGENCY ONLY
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -945,12 +1064,12 @@ contract GovTreasurer is Ownable {
         user.amount = 0;
         user.rewardDebt = 0;
         
-        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
+        pool.token.safeTransfer(address(msg.sender), user.amount);
 
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);        
     }
 
-    // DEPOSIT | FARMING ASSETS (TOKENS) | RE-ENTRANCY DEFENSE
+    // DEPOSIT | ASSETS (TOKENS)
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -965,8 +1084,8 @@ contract GovTreasurer is Ownable {
         }
         
         if(_amount > 0) { // if adding more
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount.sub(taxedAmount));
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(devaddr), taxedAmount);
+            pool.token.safeTransferFrom(address(msg.sender), address(this), _amount.sub(taxedAmount));
+            pool.token.safeTransferFrom(address(msg.sender), address(treasury), taxedAmount);
             user.amount = user.amount.add(_amount.sub(taxedAmount)); // update user.amount = non-taxed amount
         }
         
@@ -974,7 +1093,7 @@ contract GovTreasurer is Ownable {
         emit Deposit(msg.sender, _pid, _amount.sub(taxedAmount));
     }
 
-    // WITHDRAW | FARMING ASSETS (TOKENS) | RE-ENTRANCY DEFENSE
+    // WITHDRAW | ASSETS (TOKENS)
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -988,7 +1107,7 @@ contract GovTreasurer is Ownable {
         
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            pool.token.safeTransfer(address(msg.sender), _amount);
         }
         
         user.rewardDebt = user.amount.mul(pool.accGDAOPerShare).div(1e12);
@@ -997,11 +1116,11 @@ contract GovTreasurer is Ownable {
 
     // SAFE TRANSFER FUNCTION | ACCOUNTS FOR ROUNDING ERRORS | ENSURES SUFFICIENT GDAO IN POOLS.
     function safeGDAOTransfer(address _to, uint256 _amount) internal {
-        uint256 GDAOBal = rewardToken.balanceOf(address(this));
+        uint256 GDAOBal = gdao.balanceOf(address(this));
         if (_amount > GDAOBal) {
-            rewardToken.transfer(_to, GDAOBal);
+            gdao.transfer(_to, GDAOBal);
         } else {
-            rewardToken.transfer(_to, _amount);
+            gdao.transfer(_to, _amount);
         }
     }
 

@@ -1,3 +1,16 @@
+/**
+MMMMMMMMMMMMMMMMMMMMMMMMMM
+MM::MMMMMM::::::MMMMMM::MM
+MMMM::MMM::::::::MMM::MMMM
+MMMMM::MMM::::::MMM::MMMMM
+MMMMMM::MMM::::MMM::MMMMMM
+MMMMMMM::MMM::MMM::MMMMMMM
+MMMMMMMM::MMMMMM::MMMMMMMM
+MMMMMMMMMM::MMM::MMMMMMMMM
+MMMMMMNMMMM::M::MMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMM
+*/
+
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.6.12;
 
@@ -15,6 +28,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract GovTreasurer is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    address devaddr;
+    address public treasury;
+    IERC20 public gdao;
+    uint256 public bonusEndBlock;
+    uint256 public GDAOPerBlock;
+
 
     // INFO | USER VARIABLES
     struct UserInfo {
@@ -34,18 +53,12 @@ contract GovTreasurer is Ownable {
 
     // INFO | POOL VARIABLES
     struct PoolInfo {
-        IERC20 lpToken;           // Address of LP token contract.
+        IERC20 token;           // Address of token contract.
         uint256 allocPoint;       // How many allocation points assigned to this pool. GDAOs to distribute per block.
         uint256 taxRate;          // Rate at which the LP token is taxed.
         uint256 lastRewardBlock;  // Last block number that GDAOs distribution occurs.
         uint256 accGDAOPerShare; // Accumulated GDAOs per share, times 1e12. See below.
     }
-
-    address public devaddr;
-    IERC20 public rewardToken;
-    uint256 public bonusEndBlock;
-    uint256 public GDAOPerBlock;
-    uint256 public constant BONUS_MULTIPLIER = 1;
 
     PoolInfo[] public poolInfo;
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
@@ -56,18 +69,13 @@ contract GovTreasurer is Ownable {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-    constructor(
-        address _rewardToken,
-        address _devaddr,
-        uint256 _GDAOPerBlock,
-        uint256 _startBlock,
-        uint256 _bonusEndBlock
-    )   public {
-        rewardToken = IERC20(_rewardToken); // GDAO Reward
-        devaddr = _devaddr; // Multisig Treasury Account
-        GDAOPerBlock = _GDAOPerBlock; // Rewards Rate per Block
-        bonusEndBlock = _bonusEndBlock;
+    constructor(IERC20 _gdao, address _treasury, uint256 _GDAOPerBlock, uint256 _startBlock, uint256 _bonusEndBlock) public {
+        gdao = _gdao;
+        treasury = _treasury;
+        devaddr = msg.sender;
+        GDAOPerBlock = _GDAOPerBlock;
         startBlock = _startBlock;
+        bonusEndBlock = _bonusEndBlock;
     }
 
     function poolLength() external view returns (uint256) {
@@ -76,15 +84,15 @@ contract GovTreasurer is Ownable {
 
 
     // VALIDATION | ELIMINATES POOL DUPLICATION RISK
-    function checkPoolDuplicate(IERC20 _lpToken) public view {
+    function checkPoolDuplicate(IERC20 _token) public view {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
-            require(poolInfo[pid].lpToken != _lpToken, "add: existing pool?");
+            require(poolInfo[pid].token != _token, "add: existing pool?");
         }
     }
 
     // ADD | NEW TOKEN POOL
-    function add(uint256 _allocPoint, IERC20 _lpToken, uint256 _taxRate, bool _withUpdate) public 
+    function add(uint256 _allocPoint, IERC20 _token, uint256 _taxRate, bool _withUpdate) public 
         onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -92,7 +100,7 @@ contract GovTreasurer is Ownable {
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(PoolInfo({
-            lpToken: _lpToken,
+            token: _token,
             allocPoint: _allocPoint,
             taxRate: _taxRate,
             lastRewardBlock: lastRewardBlock,
@@ -113,11 +121,11 @@ contract GovTreasurer is Ownable {
     function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         _from = _from >= startBlock ? _from : startBlock;
         if (_to <= bonusEndBlock) {
-            return _to.sub(_from).mul(BONUS_MULTIPLIER);
+            return _to.sub(_from);
         } else if (_from >= bonusEndBlock) {
             return _to.sub(_from);
         } else {
-            return bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(
+            return bonusEndBlock.sub(_from).add(
                 _to.sub(bonusEndBlock)
             );
         }
@@ -128,7 +136,7 @@ contract GovTreasurer is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accGDAOPerShare = pool.accGDAOPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.token.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 GDAOReward = multiplier.mul(GDAOPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
@@ -151,7 +159,7 @@ contract GovTreasurer is Ownable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.token.balanceOf(address(this));
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
@@ -169,7 +177,7 @@ contract GovTreasurer is Ownable {
         _;
     }
 
-    // WITHDRAW | FARMING ASSETS (TOKENS) WITH NO REWARDS | EMERGENCY ONLY | RE-ENTRANCY DEFENSE
+    // WITHDRAW | ASSETS (TOKENS) WITH NO REWARDS | EMERGENCY ONLY
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -177,12 +185,12 @@ contract GovTreasurer is Ownable {
         user.amount = 0;
         user.rewardDebt = 0;
         
-        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
+        pool.token.safeTransfer(address(msg.sender), user.amount);
 
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);        
     }
 
-    // DEPOSIT | FARMING ASSETS (TOKENS) | RE-ENTRANCY DEFENSE
+    // DEPOSIT | ASSETS (TOKENS)
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -197,8 +205,8 @@ contract GovTreasurer is Ownable {
         }
         
         if(_amount > 0) { // if adding more
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount.sub(taxedAmount));
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(devaddr), taxedAmount);
+            pool.token.safeTransferFrom(address(msg.sender), address(this), _amount.sub(taxedAmount));
+            pool.token.safeTransferFrom(address(msg.sender), address(treasury), taxedAmount);
             user.amount = user.amount.add(_amount.sub(taxedAmount)); // update user.amount = non-taxed amount
         }
         
@@ -206,7 +214,7 @@ contract GovTreasurer is Ownable {
         emit Deposit(msg.sender, _pid, _amount.sub(taxedAmount));
     }
 
-    // WITHDRAW | FARMING ASSETS (TOKENS) | RE-ENTRANCY DEFENSE
+    // WITHDRAW | ASSETS (TOKENS)
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -220,7 +228,7 @@ contract GovTreasurer is Ownable {
         
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            pool.token.safeTransfer(address(msg.sender), _amount);
         }
         
         user.rewardDebt = user.amount.mul(pool.accGDAOPerShare).div(1e12);
@@ -229,11 +237,11 @@ contract GovTreasurer is Ownable {
 
     // SAFE TRANSFER FUNCTION | ACCOUNTS FOR ROUNDING ERRORS | ENSURES SUFFICIENT GDAO IN POOLS.
     function safeGDAOTransfer(address _to, uint256 _amount) internal {
-        uint256 GDAOBal = rewardToken.balanceOf(address(this));
+        uint256 GDAOBal = gdao.balanceOf(address(this));
         if (_amount > GDAOBal) {
-            rewardToken.transfer(_to, GDAOBal);
+            gdao.transfer(_to, GDAOBal);
         } else {
-            rewardToken.transfer(_to, _amount);
+            gdao.transfer(_to, _amount);
         }
     }
 
